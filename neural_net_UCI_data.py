@@ -1,22 +1,35 @@
 from typing import Tuple
 from neural import *
 from sklearn.model_selection import train_test_split
+import pandas as pd
 
-def parse_line(line: str) -> Tuple[List[float], List[float]]:
-    """Splits line of CSV into inputs and output (transormfing output as appropriate)
+def parse_line(line: str, num_categories: int) -> Tuple[List[float], List[float]]:
+    """Splits line of CSV into inputs and output (transforming output as appropriate)
 
     Args:
         line - one line of the CSV as a string
+        num_categories - number of categories for one-hot encoding
 
     Returns:
         tuple of input list and output list
     """
-    tokens = line.split(",")
-    out = int(tokens[0])
-    output = [0 if out == 1 else 0.5 if out == 2 else 1]
+    tokens = line.strip().split(",")  # Strip newline character and split by comma
+    output = [float(tokens[0])]  # Assuming the first token is the output
 
-    inpt = [float(x) for x in tokens[1:]]
-    return (inpt, output)
+    # One-hot encode categorical features
+    input_features = []
+    for token in tokens[1:]:
+        try:
+            input_features.append(float(token))  # If it's a number, directly append
+        except ValueError:
+            # If it's not a number, it's a categorical feature
+            # Apply one-hot encoding
+            one_hot_encoded = np.zeros(num_categories)
+            category_index = hash(token) % num_categories
+            one_hot_encoded[category_index] = 1
+            input_features.extend(one_hot_encoded.tolist())
+
+    return input_features, output
 
 
 def normalize(data: List[Tuple[List[float], List[float]]]):
@@ -29,20 +42,24 @@ def normalize(data: List[Tuple[List[float], List[float]]]):
         normalized data where input features are mapped to 0-1 range (output already
         mapped in parse_line)
     """
-    leasts = len(data[0][0]) * [100.0]
-    mosts = len(data[0][0]) * [0.0]
+    num_features = len(data[0][0])
+    leasts = num_features * [100.0]
+    mosts = num_features * [0.0]
 
-    for i in range(len(data)):
-        for j in range(len(data[i][0])):
-            if data[i][0][j] < leasts[j]:
-                leasts[j] = data[i][0][j]
-            if data[i][0][j] > mosts[j]:
-                mosts[j] = data[i][0][j]
+    for features, _ in data:
+        for j in range(len(features)):
+            leasts[j] = min(leasts[j], features[j])
+            mosts[j] = max(mosts[j], features[j])
 
-    for i in range(len(data)):
-        for j in range(len(data[i][0])):
-            data[i][0][j] = (data[i][0][j] - leasts[j]) / (mosts[j] - leasts[j])
-    return data
+    normalized_data = []
+    for features, output in data:
+        normalized_features = []
+        for j in range(len(features)):
+            normalized_feature = (features[j] - leasts[j]) / (mosts[j] - leasts[j])
+            normalized_features.append(normalized_feature)
+        normalized_data.append((normalized_features, output))
+
+    return normalized_data
 
 
 with open("car_data.txt", "r") as f:
