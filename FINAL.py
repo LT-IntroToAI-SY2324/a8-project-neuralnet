@@ -1,6 +1,12 @@
+# Neel Nadkarni, Nathan Stalley, Jehan Balading, Cesar Herrera
+# Final error:
+# Percent wrong = 23.7%
+# Percent correct = 76.3%
+
 import csv
 from neural import *
-from sklearn.preprocessing import normalize
+from sklearn.model_selection import train_test_split
+
 
 
 buying_map = {'vhigh': 4, 'high': 3, 'med': 2, 'low': 1}
@@ -68,11 +74,11 @@ def closest_value(n):
 
 car_nn = NeuralNet(6, 1, 1)
 
-normalize(transformed_data, norm="max")
+xtrain, xtest = train_test_split(transformed_data, test_size=.2)
 
-car_nn.train(transformed_data)
+car_nn.train(xtrain)
 
-error_bound = car_nn.test_with_expected(transformed_data)
+error_bound = car_nn.test_with_expected(xtest)
 
 print(error_bound[0])
 
